@@ -1,16 +1,45 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using System.Linq;
+using AirMonitor.Models;
 
 namespace AirMonitor.ViewModels
 {
-    public class DetailsViewModel : INotifyPropertyChanged
+    public class DetailsViewModel : BaseViewModel
     {
-        public event PropertyChangedEventHandler PropertyChanged;
 
         public DetailsViewModel()
         {
+        }
+        private Measurement _item;
+        public Measurement Item
+        {
+            get => _item;
+            set
+            {
+                SetProperty(ref _item, value);
+
+                UpdateProperties();
+            }
+        }
+
+        private void UpdateProperties()
+        {
+            if (Item?.Current == null) return;
+            var current = Item?.Current;
+            var index = current.Indexes?.FirstOrDefault(c => c.Name == "AIRLY_CAQI");
+            var values = current.Values;
+            var standards = current.Standards;
+
+            CaqiValue = (int)Math.Round(index?.Value ?? 0);
+            CaqiTitle = index.Description;
+            CaqiDescription = index.Advice;
+            Pm25Value = (int)Math.Round(values?.FirstOrDefault(s => s.Name == "PM25")?.Value ?? 0);
+            Pm10Value = (int)Math.Round(values?.FirstOrDefault(s => s.Name == "PM10")?.Value ?? 0);
+            HumidityPercent = (int)Math.Round(values?.FirstOrDefault(s => s.Name == "HUMIDITY")?.Value ?? 0);
+            PressureValue = (int)Math.Round(values?.FirstOrDefault(s => s.Name == "PRESSURE")?.Value ?? 0);
+            Pm25Percent = (int)Math.Round(standards?.FirstOrDefault(s => s.Pollutant == "PM25")?.Percent ?? 0);
+            Pm10Percent = (int)Math.Round(standards?.FirstOrDefault(s => s.Pollutant == "PM10")?.Percent ?? 0);
         }
 
         private int _caqiValue = 57;
@@ -71,11 +100,11 @@ namespace AirMonitor.ViewModels
             set => SetProperty(ref _pm10Percent, value);
         }
 
-        private double _humidityValue = 0.95;
-        public double HumidityValue
+        private int _humidityPercent = 29;
+        public int HumidityPercent
         {
-            get => _humidityValue;
-            set => SetProperty(ref _humidityValue, value);
+            get => _humidityPercent;
+            set => SetProperty(ref _humidityPercent, value);
         }
 
         private int _pressureValue = 1027;
@@ -85,20 +114,5 @@ namespace AirMonitor.ViewModels
             set => SetProperty(ref _pressureValue, value);
         }
 
-        private void RaisePropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
-        {
-            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-
-            field = value;
-
-            RaisePropertyChanged(propertyName);
-
-            return true;
-        }
     }
 }

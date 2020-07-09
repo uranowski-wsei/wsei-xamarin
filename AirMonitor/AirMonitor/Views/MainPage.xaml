@@ -50,7 +50,7 @@
                     FontAttributes="Bold"
                     HorizontalTextAlignment="Center"/>
                 <Label
-                    Text="Możesz bezpiecznie wyjść z domu bez swojej maski anty-smogowej i nie bać się o swoje zdrowie. Zadanie lab 1"
+                    Text="Możesz bezpiecznie wyjść z domu bez swojej maski anty-smogowej i nie bać się o swoje zdrowie."
                     FontSize="14"
                     TextColor="Black" />
 
