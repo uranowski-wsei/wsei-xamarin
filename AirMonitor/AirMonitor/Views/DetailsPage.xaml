@@ -111,7 +111,8 @@
                                 Style="{StaticResource NormalTextLabelStyle}"/>
                             <Slider
                                  Value="{Binding HumidityPercent, Converter={StaticResource PercentToValue}, Mode=OneWay}"
-                                Style="{StaticResource SliderStyle}"/>
+                                Style="{StaticResource SliderStyle}"
+                                IsEnabled="False"/>
                         </StackLayout>
                     </controls:ContentWithHeader.ControlContent>
                 </controls:ContentWithHeader>
@@ -127,6 +128,7 @@
                             <Slider
                                 Maximum="1100"
                                 Minimum="900"
+                                IsEnabled="False"
                                 Value="{Binding PressureValue}"
                                 Style="{StaticResource SliderStyle}"/>
                         </StackLayout>

@@ -12,6 +12,7 @@ using Xamarin.Forms;
 using Xamarin.Essentials;
 using System.Globalization;
 using System.Web;
+using Xamarin.Forms.Maps;
 
 namespace AirMonitor.ViewModels
 {
@@ -32,8 +33,15 @@ namespace AirMonitor.ViewModels
 
             var location = await GetLocation();
             var installations = await GetInstallations(location, maxResults: 3);
+            
             var data = await GetMeasurementsForInstallations(installations);
             Items = new List<Measurement>(data);
+            Locations = Items.Select(s => new MapLocation
+            {
+                Address = s.Installation.Address.Description,
+                Position = new Position(s.Installation.Location.Latitude, s.Installation.Location.Longitude),
+                Description = $"CQAI: {s.CurrentDisplayValue}"
+            }).ToList();
 
             IsBusy = false;
         }
@@ -46,11 +54,27 @@ namespace AirMonitor.ViewModels
             _navigation.PushAsync(new DetailsPage(item));
         }
 
+        private ICommand _mapPinTappedCommand;
+        public ICommand MapPinTappedCommand => _mapPinTappedCommand ?? (_mapPinTappedCommand = new Command<string>(OnMapPinTappedCommand));
+
+        private void OnMapPinTappedCommand(string address)
+        {
+            var item = Items.FirstOrDefault(s => s.Installation.Address.Description.Equals(address));
+            _navigation.PushAsync(new DetailsPage(item));
+        }
+
         private List<Measurement> _items;
         public List<Measurement> Items
         {
             get => _items;
             set => SetProperty(ref _items, value);
+        }
+
+        private List<MapLocation> _locations;
+        public List<MapLocation> Locations
+        {
+            get => _locations;
+            set => SetProperty(ref _locations, value);
         }
 
         private bool _isBusy;
@@ -60,7 +84,7 @@ namespace AirMonitor.ViewModels
             set => SetProperty(ref _isBusy, value);
         }
 
-        private async Task<IEnumerable<Installation>> GetInstallations(Location location, double maxDistanceInKm = 3, int maxResults = -1)
+        private async Task<IEnumerable<Installation>> GetInstallations(Location location, double maxDistanceInKm = 10, int maxResults = 3)
         {
             if (location == null)
             {
@@ -199,7 +223,7 @@ namespace AirMonitor.ViewModels
             return default;
         }
 
-        private async Task<Location> GetLocation()
+        public async Task<Location> GetLocation()
         {
             try
             {
