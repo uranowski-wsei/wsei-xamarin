@@ -6,7 +6,7 @@
     <Style TargetType="ContentPage" x:Key="DetailsPageStyle">
         <Setter Property="BackgroundColor" Value="{StaticResource DetailsBackgroundColor}"/>
     </Style>
-
+            
     <Style TargetType="StackLayout" x:Key="DetailsLayoutStyle">
         <Setter Property="Padding" Value="24"/>
         <Setter Property="Spacing" Value="12"/>

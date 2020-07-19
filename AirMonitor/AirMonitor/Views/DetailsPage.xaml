@@ -72,12 +72,12 @@
                             </Label>
                         </controls:ContentWithHeader.ControlContent>
                     </controls:ContentWithHeader>
-
+                
                     <BoxView
                         Grid.Column="1"
                         Style="{StaticResource VerticalSeparatorStyle}" />
-
-
+                    
+                    
                     <controls:ContentWithHeader
                         Title="PM 10"
                         Grid.Column="2">
@@ -101,22 +101,21 @@
                     </controls:ContentWithHeader>
                 </Grid>
 
-
+                
                 <BoxView Style="{StaticResource HorizontalSeparatorStyle}"/>
                 <controls:ContentWithHeader Title="Wilgotność">
                     <controls:ContentWithHeader.ControlContent>
                         <StackLayout>
                             <Label
-                                 Text="{Binding HumidityPercent, StringFormat='{0}%'}"
+                                Text="{Binding HumidityPercent, StringFormat='{0}%'}"
                                 Style="{StaticResource NormalTextLabelStyle}"/>
                             <Slider
-                                 Value="{Binding HumidityPercent, Converter={StaticResource PercentToValue}, Mode=OneWay}"
-                                Style="{StaticResource SliderStyle}"
-                                IsEnabled="False"/>
+                                Value="{Binding HumidityPercent, Converter={StaticResource PercentToValue}, Mode=OneWay}"
+                                Style="{StaticResource SliderStyle}"/>
                         </StackLayout>
                     </controls:ContentWithHeader.ControlContent>
                 </controls:ContentWithHeader>
-
+                
                 <BoxView Style="{StaticResource HorizontalSeparatorStyle}"/>
                 <controls:ContentWithHeader Title="Ciśnienie">
                     <controls:ContentWithHeader.ControlContent>
@@ -128,7 +127,6 @@
                             <Slider
                                 Maximum="1100"
                                 Minimum="900"
-                                IsEnabled="False"
                                 Value="{Binding PressureValue}"
                                 Style="{StaticResource SliderStyle}"/>
                         </StackLayout>

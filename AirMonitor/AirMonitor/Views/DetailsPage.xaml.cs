@@ -4,9 +4,9 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Xamarin.Forms;
 using AirMonitor.Models;
 using AirMonitor.ViewModels;
+using Xamarin.Forms;
 
 namespace AirMonitor.Views
 {
@@ -18,6 +18,7 @@ namespace AirMonitor.Views
         public DetailsPage(Measurement item)
         {
             InitializeComponent();
+
             var vm = BindingContext as DetailsViewModel;
             vm.Item = item;
         }

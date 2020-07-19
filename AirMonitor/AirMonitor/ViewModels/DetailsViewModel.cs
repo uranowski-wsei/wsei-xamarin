@@ -7,10 +7,10 @@ namespace AirMonitor.ViewModels
 {
     public class DetailsViewModel : BaseViewModel
     {
-
         public DetailsViewModel()
         {
         }
+
         private Measurement _item;
         public Measurement Item
         {
@@ -113,6 +113,5 @@ namespace AirMonitor.ViewModels
             get => _pressureValue;
             set => SetProperty(ref _pressureValue, value);
         }
-
     }
 }

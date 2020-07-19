@@ -24,17 +24,27 @@ namespace AirMonitor.ViewModels
         {
             _navigation = navigation;
 
-            Initialize();
+            Initialize(false);
         }
 
-        private async Task Initialize()
+        private async Task Initialize(bool forceRefresh)
         {
             IsBusy = true;
 
+            await LoadData(forceRefresh);
+
+            IsBusy = false;
+        }
+
+        private async Task LoadData(bool forceRefresh)
+        {
             var location = await GetLocation();
-            var installations = await GetInstallations(location, maxResults: 3);
-            
-            var data = await GetMeasurementsForInstallations(installations);
+            var data = await Task.Run(async () =>
+            {
+                var installations = await GetInstallations(location, forceRefresh,maxResults: 3);
+                return await GetMeasurementsForInstallations(installations, forceRefresh);
+            });
+
             Items = new List<Measurement>(data);
             Locations = Items.Select(s => new MapLocation
             {
@@ -42,13 +52,11 @@ namespace AirMonitor.ViewModels
                 Position = new Position(s.Installation.Location.Latitude, s.Installation.Location.Longitude),
                 Description = $"CQAI: {s.CurrentDisplayValue}"
             }).ToList();
-
-            IsBusy = false;
         }
 
         private ICommand _goToDetailsCommand;
         public ICommand GoToDetailsCommand => _goToDetailsCommand ?? (_goToDetailsCommand = new Command<Measurement>(OnGoToDetails));
-
+        
         private void OnGoToDetails(Measurement item)
         {
             _navigation.PushAsync(new DetailsPage(item));
@@ -56,11 +64,23 @@ namespace AirMonitor.ViewModels
 
         private ICommand _mapPinTappedCommand;
         public ICommand MapPinTappedCommand => _mapPinTappedCommand ?? (_mapPinTappedCommand = new Command<string>(OnMapPinTappedCommand));
-
+        
         private void OnMapPinTappedCommand(string address)
         {
             var item = Items.FirstOrDefault(s => s.Installation.Address.Description.Equals(address));
             _navigation.PushAsync(new DetailsPage(item));
+        }
+
+        private ICommand _refreshCommand;
+        public ICommand RefreshCommand => _refreshCommand ?? (_refreshCommand = new Command(async () => await OnRefreshCommand()));
+
+        private async Task OnRefreshCommand()
+        {
+            IsRefreshing = true;
+
+            await LoadData(true);
+
+            IsRefreshing = false;
         }
 
         private List<Measurement> _items;
@@ -84,7 +104,14 @@ namespace AirMonitor.ViewModels
             set => SetProperty(ref _isBusy, value);
         }
 
-        private async Task<IEnumerable<Installation>> GetInstallations(Location location, double maxDistanceInKm = 10, int maxResults = 3)
+        private bool _isRefreshing;
+        public bool IsRefreshing
+        {
+            get => _isRefreshing;
+            set => SetProperty(ref _isRefreshing, value);
+        }
+
+        private async Task<IEnumerable<Installation>> GetInstallations(Location location, bool forceRefresh, double maxDistanceInKm = 3, int maxResults = -1)
         {
             if (location == null)
             {
@@ -92,20 +119,34 @@ namespace AirMonitor.ViewModels
                 return null;
             }
 
-            var query = GetQuery(new Dictionary<string, object>
-            {
-                { "lat", location.Latitude },
-                { "lng", location.Longitude },
-                { "maxDistanceKM", maxDistanceInKm },
-                { "maxResults", maxResults }
-            });
-            var url = GetAirlyApiUrl(App.AirlyApiInstallationUrl, query);
+            IEnumerable<Installation> result;
 
-            var response = await GetHttpResponseAsync<IEnumerable<Installation>>(url);
-            return response;
+            var savedMeasurements = App.DbHelper.GetMeasurements();
+
+            if (forceRefresh || ShouldUpdateData(savedMeasurements))
+            {
+                var query = GetQuery(new Dictionary<string, object>
+                {
+                    { "lat", location.Latitude },
+                    { "lng", location.Longitude },
+                    { "maxDistanceKM", maxDistanceInKm },
+                    { "maxResults", maxResults }
+                });
+                var url = GetAirlyApiUrl(App.AirlyApiInstallationUrl, query);
+
+                result = await GetHttpResponseAsync<IEnumerable<Installation>>(url);
+                
+                App.DbHelper.SaveInstallations(result);
+            }
+            else
+            {
+                result = App.DbHelper.GetInstallations();
+            }
+
+            return result;
         }
 
-        private async Task<IEnumerable<Measurement>> GetMeasurementsForInstallations(IEnumerable<Installation> installations)
+        private async Task<IEnumerable<Measurement>> GetMeasurementsForInstallations(IEnumerable<Installation> installations, bool forceRefresh)
         {
             if (installations == null)
             {
@@ -114,26 +155,47 @@ namespace AirMonitor.ViewModels
             }
 
             var measurements = new List<Measurement>();
+            var savedMeasurements = App.DbHelper.GetMeasurements();
 
-            foreach (var installation in installations)
+            if (forceRefresh || ShouldUpdateData(savedMeasurements))
             {
-                var query = GetQuery(new Dictionary<string, object>
+                foreach (var installation in installations)
                 {
-                    { "installationId", installation.Id }
-                });
-                var url = GetAirlyApiUrl(App.AirlyApiMeasurementUrl, query);
+                    var query = GetQuery(new Dictionary<string, object>
+                    {
+                        { "installationId", installation.Id }
+                    });
+                    var url = GetAirlyApiUrl(App.AirlyApiMeasurementUrl, query);
 
-                var response = await GetHttpResponseAsync<Measurement>(url);
+                    var response = await GetHttpResponseAsync<Measurement>(url);
 
-                if (response != null)
-                {
-                    response.Installation = installation;
-                    response.CurrentDisplayValue = (int)Math.Round(response.Current?.Indexes?.FirstOrDefault()?.Value ?? 0);
-                    measurements.Add(response);
+                    if (response != null)
+                    {
+                        response.Installation = installation;
+                        measurements.Add(response);
+                    }
                 }
+
+                App.DbHelper.SaveMeasurements(measurements);
+            }
+            else
+            {
+                measurements = savedMeasurements.ToList();
+            }
+
+            foreach (var measurement in measurements)
+            {
+                measurement.CurrentDisplayValue = (int)Math.Round(measurement.Current?.Indexes?.FirstOrDefault()?.Value ?? 0);
             }
 
             return measurements;
+        }
+
+        private bool ShouldUpdateData(IEnumerable<Measurement> savedMeasurements)
+        {
+            var isAnyMeasurementOld = savedMeasurements.Any(s => s.Current.TillDateTime.AddMinutes(60) < DateTime.UtcNow);
+
+            return savedMeasurements.Count() == 0 || isAnyMeasurementOld;
         }
 
         private string GetQuery(IDictionary<string, object> args)
